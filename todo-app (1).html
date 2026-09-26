@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Drift — Todo</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root{
+    --blue-1:#eaf2ff; --blue-2:#dbeafe; --blue-3:#93c5fd; --blue-4:#3b82f6; --blue-5:#1d4ed8;
+    --ink:#0f1b33; --ink-soft:#5b6b86;
+    --glass:rgba(255,255,255,0.55); --glass-edge:rgba(255,255,255,0.85);
+    --radius:22px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+    background:
+      radial-gradient(circle at 15% 10%, var(--blue-3) 0%, transparent 45%),
+      radial-gradient(circle at 85% 0%, var(--blue-2) 0%, transparent 50%),
+      linear-gradient(160deg, #f7faff 0%, var(--blue-1) 60%, var(--blue-2) 100%);
+    color:var(--ink); min-height:100%;
+    padding: calc(28px + env(safe-area-inset-top,0px)) 18px calc(28px + env(safe-area-inset-bottom,0px));
+    display:flex; justify-content:center;
+  }
+  .app{width:100%; max-width:560px;}
+  .hero{margin-bottom:22px;}
+  .hero h1{font-size:32px; margin:0 0 4px; font-weight:700; letter-spacing:-0.02em;}
+  .hero p{margin:0; color:var(--ink-soft); font-size:14.5px;}
+
+  .glass{
+    background:var(--glass); backdrop-filter:blur(20px) saturate(160%); -webkit-backdrop-filter:blur(20px) saturate(160%);
+    border:1px solid var(--glass-edge); border-radius:var(--radius);
+    box-shadow: 0 8px 32px rgba(29,78,216,0.10), inset 0 1px 0 rgba(255,255,255,0.6);
+  }
+
+  .composer{padding:16px; margin-bottom:16px;}
+  .composer-row{display:flex; gap:10px;}
+  input[type=text], textarea{
+    flex:1; border:1px solid rgba(59,130,246,0.18); background:rgba(255,255,255,0.7);
+    border-radius:16px; padding:13px 16px; font-size:15px; color:var(--ink); outline:none;
+    font-family:inherit;
+  }
+  input[type=text]:focus{border-color:var(--blue-4); box-shadow:0 0 0 3px rgba(59,130,246,0.15);}
+  button{font-family:inherit; cursor:pointer; border:none;}
+  .btn-primary{
+    background:linear-gradient(135deg, var(--blue-4), var(--blue-5)); color:#fff; font-weight:600;
+    padding:13px 18px; border-radius:16px; font-size:15px; box-shadow:0 6px 16px rgba(29,78,216,0.30);
+    transition:transform .15s ease;
+  }
+  .btn-primary:active{transform:scale(0.96);}
+  .btn-ghost{
+    background:rgba(59,130,246,0.10); color:var(--blue-5); font-weight:600; font-size:13.5px;
+    padding:9px 14px; border-radius:14px; transition:background .15s ease;
+  }
+  .btn-ghost:hover{background:rgba(59,130,246,0.18);}
+  .btn-ghost[disabled]{opacity:.5; cursor:default;}
+  .ai-row{display:flex; align-items:center; gap:8px; margin-top:10px;}
+  .ai-row .hint{font-size:12.5px; color:var(--ink-soft);}
+
+  .filters{display:flex; gap:8px; margin-bottom:14px;}
+  .chip{
+    padding:7px 14px; border-radius:999px; font-size:13.5px; font-weight:600; color:var(--ink-soft);
+    background:rgba(255,255,255,0.5); border:1px solid rgba(59,130,246,0.14);
+  }
+  .chip.active{background:var(--blue-4); color:#fff; border-color:transparent;}
+
+  .list{display:flex; flex-direction:column; gap:10px;}
+  .task{padding:14px 16px; display:flex; align-items:flex-start; gap:12px;}
+  .check{
+    width:23px; height:23px; border-radius:50%; border:2px solid var(--blue-4); flex:none; margin-top:2px;
+    display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.6);
+  }
+  .check.done{background:var(--blue-4);}
+  .check svg{width:13px; height:13px; opacity:0;}
+  .check.done svg{opacity:1;}
+  .task-body{flex:1; min-width:0;}
+  .task-title{font-size:15.5px; font-weight:600; line-height:1.35;}
+  .task.done .task-title{color:var(--ink-soft); text-decoration:line-through;}
+  .subtasks{margin-top:8px; padding-left:2px; display:flex; flex-direction:column; gap:6px;}
+  .sub{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--ink-soft);}
+  .sub .subcheck{width:16px; height:16px; border-radius:5px; border:1.5px solid var(--blue-3); flex:none; display:flex; align-items:center; justify-content:center;}
+  .sub .subcheck.done{background:var(--blue-3);}
+  .sub.done span{text-decoration:line-through;}
+  .task-actions{display:flex; gap:6px; flex:none;}
+  .icon-btn{background:transparent; color:var(--ink-soft); font-size:16px; padding:4px 6px; border-radius:8px;}
+  .icon-btn:hover{background:rgba(59,130,246,0.10); color:var(--blue-5);}
+  .empty{text-align:center; padding:50px 20px; color:var(--ink-soft);}
+  .empty div{font-size:34px; margin-bottom:8px;}
+
+  .settings-toggle{
+    position:fixed; top:calc(18px + env(safe-area-inset-top,0px)); right:18px;
+    width:38px; height:38px; border-radius:50%; background:var(--glass); border:1px solid var(--glass-edge);
+    display:flex; align-items:center; justify-content:center; font-size:16px; backdrop-filter:blur(14px);
+  }
+  .panel-overlay{position:fixed; inset:0; background:rgba(15,27,51,0.25); backdrop-filter:blur(2px); display:none; align-items:center; justify-content:center; padding:20px; z-index:10;}
+  .panel-overlay.open{display:flex;}
+  .panel{width:100%; max-width:400px; padding:22px;}
+  .panel h2{margin:0 0 4px; font-size:18px;}
+  .panel p{margin:0 0 14px; font-size:13px; color:var(--ink-soft); line-height:1.5;}
+  .panel label{font-size:12.5px; font-weight:600; color:var(--ink-soft); display:block; margin-bottom:6px;}
+  .panel-actions{display:flex; gap:8px; margin-top:14px; justify-content:flex-end;}
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#eaf1ff; --ink-soft:#9db2d6; --glass:rgba(15,27,51,0.55); --glass-edge:rgba(147,197,253,0.18);
+    }
+    body:not([data-theme="light"]){background:radial-gradient(circle at 15% 10%, #1e3a6e 0%, transparent 45%), radial-gradient(circle at 85% 0%, #16213f 0%, transparent 50%), linear-gradient(160deg,#0b1226 0%,#0f1b33 60%,#101c38 100%);}
+    input:not([data-theme="light"] input), textarea{background:rgba(255,255,255,0.06); color:#eaf1ff;}
+  }
+</style>
+</head>
+<body>
+  <button class="settings-toggle" onclick="togglePanel(true)" title="Gemini API key">⚙️</button>
+
+  <div class="app">
+    <div class="hero">
+      <h1>Drift</h1>
+      <p>Your tasks, gently organized — with a little help from Gemini.</p>
+    </div>
+
+    <div class="glass composer">
+      <div class="composer-row">
+        <input id="input" type="text" dir="auto" placeholder="Add a task…" onkeydown="if(event.key==='Enter')addTask()">
+        <button class="btn-primary" onclick="addTask()">Add</button>
+      </div>
+      <div class="ai-row">
+        <button class="btn-ghost" id="aiBtn" onclick="breakdownLast()">✨ Break down with Gemini</button>
+        <span class="hint" id="aiHint">Splits your latest task into steps</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="chip active" onclick="setFilter('all',this)">All</div>
+      <div class="chip" onclick="setFilter('active',this)">Active</div>
+      <div class="chip" onclick="setFilter('done',this)">Done</div>
+    </div>
+
+    <div class="list" id="list"></div>
+  </div>
+
+  <div class="panel-overlay" id="panelOverlay">
+    <div class="glass panel">
+      <h2>Gemini API key</h2>
+      <p>Stored only in this browser's local storage — it's sent directly from your device to Google's API, never through us. Anyone with access to this page's source can see it, so don't share this file with a key you care about protecting.</p>
+      <label for="apiKeyInput">API key</label>
+      <input type="text" id="apiKeyInput" placeholder="Paste your Gemini API key">
+      <div class="panel-actions">
+        <button class="btn-ghost" onclick="togglePanel(false)">Cancel</button>
+        <button class="btn-primary" onclick="saveKey()">Save</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const DEFAULT_KEY = "AQ.Ab8RN6KKsKhlAKgGsfw9pTLqQxGKq2bCoWCjDInojDMMmtT-eA";
+let tasks = [];
+let filter = 'all';
+
+const tg = window.Telegram?.WebApp;
+if(tg){
+  try{
+    tg.ready();
+    tg.expand();
+    tg.setHeaderColor('#3b82f6');
+    tg.setBackgroundColor('#eaf2ff');
+    if(tg.disableVerticalSwipes) tg.disableVerticalSwipes();
+    if(tg.colorScheme === 'dark') document.body.setAttribute('data-theme','dark');
+  }catch(e){}
+}
+function haptic(kind){
+  try{
+    if(!tg?.HapticFeedback) return;
+    if(kind==='success') tg.HapticFeedback.notificationOccurred('success');
+    else if(kind==='delete') tg.HapticFeedback.notificationOccurred('warning');
+    else tg.HapticFeedback.impactOccurred('light');
+  }catch(e){}
+}
+
+function load(){
+  try{
+    const raw = localStorage.getItem('drift-tasks');
+    tasks = raw ? JSON.parse(raw) : [];
+  }catch(e){ tasks = []; }
+  if(!localStorage.getItem('drift-key')){
+    localStorage.setItem('drift-key', DEFAULT_KEY);
+  }
+  document.getElementById('apiKeyInput').value = localStorage.getItem('drift-key') || '';
+}
+function save(){
+  try{ localStorage.setItem('drift-tasks', JSON.stringify(tasks)); }catch(e){}
+}
+function getKey(){ return localStorage.getItem('drift-key') || ''; }
+
+function addTask(){
+  const input = document.getElementById('input');
+  const text = input.value.trim();
+  if(!text) return;
+  tasks.unshift({ id: Date.now(), title: text, done:false, subs:[] });
+  input.value='';
+  save(); render(); haptic('light');
+}
+function toggleDone(id){
+  const t = tasks.find(t=>t.id===id);
+  if(t){ t.done = !t.done; haptic(t.done?'success':'light'); }
+  save(); render();
+}
+function toggleSub(taskId, idx){
+  const t = tasks.find(t=>t.id===taskId);
+  if(t && t.subs[idx]) t.subs[idx].done = !t.subs[idx].done;
+  save(); render();
+}
+function removeTask(id){
+  tasks = tasks.filter(t=>t.id!==id);
+  save(); render(); haptic('delete');
+}
+function setFilter(f, el){
+  filter = f;
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  render();
+}
+
+async function breakdownLast(){
+  if(tasks.length===0) return;
+  const t = tasks[0];
+  const key = getKey();
+  if(!key){ togglePanel(true); return; }
+  const btn = document.getElementById('aiBtn');
+  const hint = document.getElementById('aiHint');
+  btn.disabled = true; btn.textContent = '✨ Thinking…';
+  try{
+    const resp = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${key}`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        contents:[{ parts:[{ text: `Break the task "${t.title}" into 3-5 short, concrete subtasks. Reply with ONLY a JSON array of strings, no markdown, no extra text.` }]}]
+      })
+    });
+    const data = await resp.json();
+    if(!resp.ok){
+      const msg = data?.error?.message || `HTTP ${resp.status}`;
+      throw new Error(msg);
+    }
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    text = text.replace(/```json|```/g,'').trim();
+    const steps = JSON.parse(text);
+    t.subs = steps.map(s => ({ text: s, done:false }));
+    save(); render();
+    hint.textContent = 'Done — subtasks added below';
+  }catch(e){
+    console.error('Gemini request failed:', e);
+    hint.textContent = 'Gemini error: ' + e.message;
+  }finally{
+    btn.disabled = false; btn.textContent = '✨ Break down with Gemini';
+  }
+}
+
+function render(){
+  const list = document.getElementById('list');
+  let items = tasks;
+  if(filter==='active') items = tasks.filter(t=>!t.done);
+  if(filter==='done') items = tasks.filter(t=>t.done);
+
+  if(items.length===0){
+    list.innerHTML = `<div class="glass empty"><div>🌤️</div>Nothing here yet — add a task above.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(t => `
+    <div class="glass task ${t.done?'done':''}">
+      <div class="check ${t.done?'done':''}" onclick="toggleDone(${t.id})">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><path d="M5 13l4 4L19 7"/></svg>
+      </div>
+      <div class="task-body">
+        <div class="task-title" dir="auto">${escapeHtml(t.title)}</div>
+        ${t.subs && t.subs.length ? `<div class="subtasks">${t.subs.map((s,i)=>`
+          <div class="sub ${s.done?'done':''}">
+            <div class="subcheck ${s.done?'done':''}" onclick="toggleSub(${t.id},${i})"></div>
+            <span dir="auto">${escapeHtml(s.text)}</span>
+          </div>`).join('')}</div>` : ''}
+      </div>
+      <div class="task-actions">
+        <button class="icon-btn" onclick="removeTask(${t.id})">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+function escapeHtml(s){
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function togglePanel(open){
+  document.getElementById('panelOverlay').classList.toggle('open', open);
+}
+function saveKey(){
+  localStorage.setItem('drift-key', document.getElementById('apiKeyInput').value.trim());
+  togglePanel(false);
+}
+
+load(); render();
+</script>
+</body>
+</html>
